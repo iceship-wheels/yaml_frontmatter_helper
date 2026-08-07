@@ -3,3 +3,4 @@ out/
 *.vsix
 dist/
 .DS_Store
+.superpowers/

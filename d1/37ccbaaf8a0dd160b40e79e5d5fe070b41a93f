@@ -1,0 +1,14 @@
+.gitignore
+  h_5c54433fb44369 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.2",
+  "base_commit_sha": "d137ccbaaf8a0dd160b40e79e5d5fe070b41a93f",
+  "prompts": {},
+  "humans": {
+    "h_5c54433fb44369": {
+      "author": "IceShip423 <15985770423@163.com>"
+    }
+  }
+}

@@ -7,6 +7,7 @@ export type MessageFromWebview =
   | { type: 'updateFM'; field: string; value: unknown }
   | { type: 'addField'; field: string; value: unknown }
   | { type: 'deleteField'; field: string }
+  | { type: 'renameField'; oldField: string; newField: string }
   | { type: 'search'; query: string; scope: 'current' | 'all' }
   | { type: 'openFile'; filePath: string }
   | { type: 'ready' };
@@ -19,8 +20,10 @@ export interface SearchTreeNode {
   matches?: Array<{ field: string; value: unknown }>;
 }
 
+export type ValueType = 'string' | 'number' | 'boolean' | 'array' | 'date' | 'null';
+
 export interface FieldSchema {
   key: string;
   value: unknown;
-  type: 'string' | 'number' | 'boolean' | 'array' | 'date' | 'null';
+  type: ValueType;
 }

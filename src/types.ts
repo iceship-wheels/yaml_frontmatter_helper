@@ -36,6 +36,7 @@ export type MessageFromWebview =
   | { type: 'updateFM'; field: string; value: unknown }
   | { type: 'addField'; field: string; value: unknown }
   | { type: 'deleteField'; field: string }
+  | { type: 'renameField'; oldField: string; newField: string }
   | { type: 'search'; query: string; scope: 'current' | 'all' }
   | { type: 'openFile'; filePath: string }
   | { type: 'ready' };

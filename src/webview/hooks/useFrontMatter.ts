@@ -1,10 +1,11 @@
 import { useState, useCallback } from 'react';
 import { useVSCodeAPI } from './useVSCodeAPI';
-import type { FieldSchema } from '../bridge';
+import type { FieldSchema, ValueType } from '../bridge';
 
 export function useFrontMatter() {
   const [fields, setFields] = useState<FieldSchema[]>([]);
   const [exists, setExists] = useState(false);
+  const [newlyAddedKey, setNewlyAddedKey] = useState<string | null>(null);
   const { postMessage, onMessage } = useVSCodeAPI();
 
   onMessage((msg) => {
@@ -16,6 +17,8 @@ export function useFrontMatter() {
       }));
       setFields(schemas);
       setExists(msg.exists);
+      // Clear newlyAddedKey after host sync confirms the field exists
+      setNewlyAddedKey(null);
     }
   });
 
@@ -41,18 +44,36 @@ export function useFrontMatter() {
   );
 
   const addField = useCallback(
-    (field: string, value: unknown) => {
+    (field: string, value: unknown, type?: ValueType) => {
+      const fieldType = type ?? inferType(value);
       setFields((prev) => [
         ...prev,
-        { key: field, value, type: inferType(value) },
+        { key: field, value, type: fieldType },
       ]);
       setExists(true);
+      setNewlyAddedKey(field);
       postMessage({ type: 'addField', field, value });
     },
     [postMessage]
   );
 
-  return { fields, exists, updateField, deleteField, addField };
+  const renameField = useCallback(
+    (oldField: string, newField: string) => {
+      const trimmed = newField.trim();
+      if (!trimmed || oldField === trimmed) return;
+      setFields((prev) =>
+        prev.map((f) => (f.key === oldField ? { ...f, key: trimmed } : f))
+      );
+      postMessage({ type: 'renameField', oldField, newField: trimmed });
+    },
+    [postMessage]
+  );
+
+  const clearNewlyAddedKey = useCallback(() => {
+    setNewlyAddedKey(null);
+  }, []);
+
+  return { fields, exists, updateField, deleteField, addField, renameField, newlyAddedKey, clearNewlyAddedKey };
 }
 
 function inferType(value: unknown): FieldSchema['type'] {

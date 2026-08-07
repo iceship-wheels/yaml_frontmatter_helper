@@ -100,10 +100,7 @@ Documents exceeding depth 3 are flagged `readOnly` at the root level. The host s
 ### 3.1 Host → Webview
 
 ```typescript
-// Unchanged: updateFM still sends fields as Record<string, unknown>
-// But the webview now parses this into a YamlNode tree
 export type MessageToWebview =
-  | { type: 'updateFM'; fields: Record<string, unknown>; exists: boolean }
   | { type: 'updateFM'; fields: Record<string, unknown>; exists: boolean; readOnly?: boolean }
   | { type: 'searchResults'; query: string; tree: SearchTreeNode[] }
   | { type: 'error'; message: string };

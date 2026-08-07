@@ -64,6 +64,10 @@ export class FrontMatterViewProvider implements vscode.WebviewViewProvider {
         await this.syncManager.applyFieldDelete(msg.field);
         break;
 
+      case 'renameField':
+        await this.syncManager.applyFieldRename(msg.oldField, msg.newField);
+        break;
+
       case 'search':
         this.handleSearch(msg.query);
         break;

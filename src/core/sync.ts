@@ -87,6 +87,26 @@ export class SyncManager {
     await this.applyEditToDocument(newFields);
   }
 
+  async applyFieldRename(oldField: string, newField: string): Promise<void> {
+    const fm = this.currentFM ?? { fields: {}, exists: false, raw: '', startOffset: 0, endOffset: 0 };
+    if (oldField === newField || !(oldField in fm.fields)) {
+      return;
+    }
+    if (newField in fm.fields) {
+      vscode.window.showWarningMessage(`YAML Frontmatter: field "${newField}" already exists.`);
+      return;
+    }
+    const newFields: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(fm.fields)) {
+      if (key === oldField) {
+        newFields[newField] = value;
+      } else {
+        newFields[key] = value;
+      }
+    }
+    await this.applyEditToDocument(newFields);
+  }
+
   dispose(): void {
     this.disposables.forEach((d) => d.dispose());
     if (this.debounceTimer) {

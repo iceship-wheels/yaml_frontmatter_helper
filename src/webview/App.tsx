@@ -51,7 +51,7 @@ const styles: Record<string, React.CSSProperties> = {
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('edit');
-  const { fields, exists, updateField, deleteField, addField } = useFrontMatter();
+  const { fields, exists, updateField, deleteField, addField, renameField, newlyAddedKey } = useFrontMatter();
   const { postMessage, onMessage } = useVSCodeAPI();
 
   useEffect(() => {
@@ -92,10 +92,12 @@ const App: React.FC = () => {
                 field={f}
                 onUpdate={updateField}
                 onDelete={deleteField}
+                onRename={renameField}
+                autoEditKey={f.key === newlyAddedKey}
               />
             ))
           )}
-          <AddField onAdd={addField} />
+          <AddField existingKeys={fields.map((f) => f.key)} onAdd={addField} />
         </div>
       ) : (
         <SearchPanel postMessage={postMessage} onMessage={onMessage} />

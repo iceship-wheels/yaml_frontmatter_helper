@@ -1,0 +1,118 @@
+import React, { useState } from 'react';
+import type { YamlNode } from '../bridge';
+import ScalarField from './ScalarField';
+import AccordionSection from './AccordionSection';
+
+const styles: Record<string, React.CSSProperties> = {
+  row: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    marginBottom: '4px',
+    gap: '6px',
+  },
+  index: {
+    minWidth: '24px',
+    padding: '2px 4px',
+    fontSize: '11px',
+    color: 'var(--vscode-descriptionForeground)',
+    lineHeight: '22px',
+    textAlign: 'right' as const,
+  },
+  content: {
+    flex: 1,
+  },
+  deleteBtn: {
+    border: 'none',
+    background: 'none',
+    color: 'var(--vscode-errorForeground)',
+    cursor: 'pointer',
+    fontSize: '14px',
+    padding: '2px 4px',
+    lineHeight: '22px',
+    opacity: 0,
+    transition: 'opacity 0.1s',
+  },
+};
+
+interface Props {
+  node: YamlNode;
+  path: string;
+  index: number;
+  sequenceValue: unknown[];
+  readOnly: boolean;
+  onUpdate: (path: string, value: unknown) => void;
+  onDelete: (path: string) => void;
+  onAdd: (path: string, key: string, nodeType: YamlNode['type']) => void;
+  onRename: (path: string, newKey: string) => void;
+}
+
+const SequenceItem: React.FC<Props> = ({
+  node,
+  path,
+  index,
+  sequenceValue,
+  readOnly,
+  onUpdate,
+  onDelete,
+  onAdd,
+  onRename,
+}) => {
+  const [hover, setHover] = useState(false);
+
+  const isScalar = node.type === 'scalar';
+
+  // Delete a sequence item: filter it from the raw array, send the new array via nestedUpdate
+  const handleDelete = () => {
+    const filtered = sequenceValue.filter((_, i) => i !== index);
+    onUpdate(path, filtered);
+  };
+
+  // For updating a scalar item within a sequence, send the whole array with the item replaced
+  const handleScalarUpdate = (_childPath: string, value: unknown) => {
+    const updated = sequenceValue.map((v, i) => (i === index ? value : v));
+    onUpdate(path, updated);
+  };
+
+  return (
+    <div
+      style={styles.row}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <span style={styles.index}>#{index}</span>
+      <div style={styles.content}>
+        {isScalar ? (
+          <ScalarField
+            node={node}
+            path={path}
+            readOnly={readOnly}
+            onUpdate={handleScalarUpdate}
+            onDelete={handleDelete}
+          />
+        ) : (
+          <AccordionSection
+            node={node}
+            path={path}
+            depth={node.meta.depth}
+            readOnly={readOnly}
+            onUpdate={onUpdate}
+            onDelete={onDelete}
+            onAdd={onAdd}
+            onRename={onRename}
+          />
+        )}
+      </div>
+      {!readOnly && (
+        <button
+          style={{ ...styles.deleteBtn, opacity: hover ? 1 : 0 }}
+          onClick={handleDelete}
+          title={`Delete item ${index}`}
+        >
+          ×
+        </button>
+      )}
+    </div>
+  );
+};
+
+export default SequenceItem;

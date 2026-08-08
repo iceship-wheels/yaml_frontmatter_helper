@@ -1,55 +1,17 @@
 import React, { useState } from 'react';
-import type { FieldSchema } from '../bridge';
-
-type FieldType = FieldSchema['type'];
+import type { YamlNodeType } from '../bridge';
 
 interface TypeOption {
   label: string;
-  type: FieldType;
-  defaultValue: unknown;
+  nodeType: YamlNodeType;
 }
 
-const TYPE_OPTIONS: TypeOption[] = [
-  { label: 'Text', type: 'string', defaultValue: '' },
-  { label: 'List', type: 'array', defaultValue: [] },
-];
-
-const styles: Record<string, React.CSSProperties> = {
-  container: {
-    marginTop: '8px',
-    paddingTop: '8px',
-    borderTop: '1px solid var(--vscode-sideBarSectionHeader-border)',
-  },
-  addBtn: {
-    width: '100%',
-    padding: '10px 0',
-    fontSize: '20px',
-    fontWeight: 600,
-    lineHeight: '20px',
-    color: 'var(--vscode-button-secondaryForeground)',
-    backgroundColor: 'var(--vscode-button-secondaryBackground)',
-    border: '1px solid var(--vscode-button-secondaryBackground)',
-    borderRadius: '3px',
-    cursor: 'pointer',
-    textAlign: 'center',
-    transition: 'background-color 0.15s',
-  },
-  select: {
-    width: '100%',
-    padding: '8px 6px',
-    fontSize: '13px',
-    fontFamily: 'var(--vscode-font-family)',
-    color: 'var(--vscode-input-foreground)',
-    backgroundColor: 'var(--vscode-input-background)',
-    border: '1px solid var(--vscode-input-border)',
-    borderRadius: '2px',
-    outline: 'none',
-  },
-};
-
 interface Props {
+  path: string;
   existingKeys: string[];
-  onAdd: (field: string, value: unknown, type: FieldType) => void;
+  depth: number;
+  readOnly: boolean;
+  onAdd: (path: string, key: string, nodeType: YamlNodeType) => void;
 }
 
 function generateUniqueKey(existingKeys: string[]): string {
@@ -63,8 +25,54 @@ function generateUniqueKey(existingKeys: string[]): string {
   return key;
 }
 
-const AddField: React.FC<Props> = ({ existingKeys, onAdd }) => {
+const styles: Record<string, React.CSSProperties> = {
+  container: {
+    marginTop: '8px',
+    paddingTop: '8px',
+    borderTop: '1px dashed var(--vscode-sideBarSectionHeader-border)',
+  },
+  addBtn: {
+    width: '100%',
+    padding: '6px 0',
+    fontSize: '16px',
+    fontWeight: 600,
+    lineHeight: '18px',
+    color: 'var(--vscode-button-secondaryForeground)',
+    backgroundColor: 'var(--vscode-button-secondaryBackground)',
+    border: '1px solid var(--vscode-button-secondaryBackground)',
+    borderRadius: '3px',
+    cursor: 'pointer',
+    textAlign: 'center' as const,
+  },
+  select: {
+    width: '100%',
+    padding: '6px',
+    fontSize: '12px',
+    fontFamily: 'var(--vscode-font-family)',
+    color: 'var(--vscode-input-foreground)',
+    backgroundColor: 'var(--vscode-input-background)',
+    border: '1px solid var(--vscode-input-border)',
+    borderRadius: '2px',
+    outline: 'none',
+  },
+};
+
+const AddNodeButton: React.FC<Props> = ({ path, existingKeys, depth, readOnly, onAdd }) => {
   const [open, setOpen] = useState(false);
+
+  if (readOnly) return null;
+
+  const options: TypeOption[] =
+    depth <= 1
+      ? [
+          { label: 'Text', nodeType: 'scalar' },
+          { label: 'List', nodeType: 'sequence' },
+          { label: 'Object', nodeType: 'mapping' },
+        ]
+      : [
+          { label: 'Text', nodeType: 'scalar' },
+          { label: 'List', nodeType: 'sequence' },
+        ];
 
   const handleSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
@@ -72,25 +80,20 @@ const AddField: React.FC<Props> = ({ existingKeys, onAdd }) => {
       setOpen(false);
       return;
     }
-    const type = value as FieldType;
-    const option = TYPE_OPTIONS.find((o) => o.type === type);
+    const option = options.find((o) => o.nodeType === value);
     if (!option) {
       setOpen(false);
       return;
     }
     const key = generateUniqueKey(existingKeys);
-    onAdd(key, option.defaultValue, option.type);
+    onAdd(path, key, option.nodeType);
     setOpen(false);
   };
 
   return (
     <div style={styles.container}>
       {!open ? (
-        <button
-          style={styles.addBtn}
-          onClick={() => setOpen(true)}
-          title="Add a field"
-        >
+        <button style={styles.addBtn} onClick={() => setOpen(true)} title="Add a field">
           +
         </button>
       ) : (
@@ -104,8 +107,8 @@ const AddField: React.FC<Props> = ({ existingKeys, onAdd }) => {
           <option value="" disabled>
             Select field type…
           </option>
-          {TYPE_OPTIONS.map((o) => (
-            <option key={o.type} value={o.type}>
+          {options.map((o) => (
+            <option key={o.nodeType} value={o.nodeType}>
               {o.label}
             </option>
           ))}
@@ -116,4 +119,4 @@ const AddField: React.FC<Props> = ({ existingKeys, onAdd }) => {
   );
 };
 
-export default AddField;
+export default AddNodeButton;

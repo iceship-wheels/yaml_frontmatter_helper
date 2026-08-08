@@ -261,9 +261,9 @@ Flat documents with no mappings/sequences keep the existing `FieldRow` + `AddFie
 - **No flow-style badge** (out of scope)
 - Content: renders children recursively
 - Footer: dashed "+ Add" button
-  - For mappings: shows type dropdown (Text / Tags / Object / List)
+  - For mappings: shows type dropdown (Text / List / Object)
   - For sequences: adds a new scalar item with auto-generated name
-- At depth 2, the "+" only offers Text and Tags (prevents exceeding depth 3)
+- At depth 2, the "+" only offers Text and List (prevents exceeding depth 3)
 
 **`ScalarField.tsx`**
 - Inline editor replacing `FieldRow` for scalar values
@@ -278,18 +278,18 @@ Flat documents with no mappings/sequences keep the existing `FieldRow` + `AddFie
 
 **`AddNodeButton.tsx`**
 - Wide "+" button → click opens type dropdown
-- Options: Text (scalar), Tags (sequence of strings), Object (mapping), List (sequence)
+- Options: Text (scalar), List (sequence), Object (mapping)
 - On select: generates unique key, sends `nestedAdd` with `path=""` and selected `nodeType`
 
 ### 5.4 Editing Patterns
 
 | Action | UI Pattern |
 |--------|-----------|
-| Add scalar to mapping | Dashed "+" in accordion footer → type dropdown → inline key + value |
+| Add scalar to mapping | Dashed "+" in accordion footer → type dropdown (Text/List/Object) → inline key + value |
 | Add item to sequence | Dashed "+" in sequence footer → auto-adds empty scalar |
 | Delete field | × button on hover (CSS opacity) |
 | Rename mapping key | Click key name, inline edit (same as existing `FieldRow`) |
-| Depth limit guard | "+" only offers scalar types at depth 2; readOnly nodes hide all controls |
+| Depth limit guard | "+" only offers Text at depth 2; readOnly nodes hide all controls |
 
 ---
 

@@ -33,18 +33,7 @@ export class Searcher {
         continue;
       }
 
-      const matches: Array<{ field: string; value: unknown }> = [];
-      for (const [key, value] of Object.entries(entry.fields)) {
-        const keyMatch = key.toLowerCase().includes(lowerQuery);
-        const valueStr = typeof value === 'string'
-          ? value
-          : JSON.stringify(value);
-        const valueMatch = valueStr.toLowerCase().includes(lowerQuery);
-
-        if (keyMatch || valueMatch) {
-          matches.push({ field: key, value });
-        }
-      }
+      const matches = this.collectMatches(entry.fields, lowerQuery);
 
       if (matches.length > 0) {
         results.push({ filePath: file.fsPath, matches });
@@ -84,6 +73,40 @@ export class Searcher {
       this.cache.set(uri.fsPath, entry);
       return entry;
     }
+  }
+
+  private collectMatches(
+    fields: Record<string, unknown>,
+    query: string
+  ): Array<{ field: string; value: unknown }> {
+    const results: Array<{ field: string; value: unknown }> = [];
+    const stack: Array<{ prefix: string; obj: unknown }> = [
+      { prefix: '', obj: fields },
+    ];
+    while (stack.length > 0) {
+      const { prefix, obj } = stack.pop()!;
+      if (typeof obj !== 'object' || obj === null) {
+        if (String(obj).toLowerCase().includes(query)) {
+          results.push({ field: prefix, value: obj });
+        }
+        continue;
+      }
+      if (Array.isArray(obj)) {
+        obj.forEach((item, i) =>
+          stack.push({ prefix: `${prefix}[${i}]`, obj: item })
+        );
+      } else {
+        for (const [key, val] of Object.entries(
+          obj as Record<string, unknown>
+        )) {
+          stack.push({
+            prefix: prefix ? `${prefix}.${key}` : key,
+            obj: val,
+          });
+        }
+      }
+    }
+    return results;
   }
 
   private buildTree(

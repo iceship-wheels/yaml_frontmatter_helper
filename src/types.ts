@@ -39,4 +39,18 @@ export type MessageFromWebview =
   | { type: 'renameField'; oldField: string; newField: string }
   | { type: 'search'; query: string; scope: 'current' | 'all' }
   | { type: 'openFile'; filePath: string }
-  | { type: 'ready' };
+  | { type: 'ready' }
+  | { type: 'nestedUpdate'; path: string; value: unknown }
+  | { type: 'nestedAdd'; path: string; key: string; nodeType: YamlNodeType }
+  | { type: 'nestedDelete'; path: string }
+  | { type: 'nestedRename'; path: string; newKey: string };
+
+export type YamlNodeType = 'mapping' | 'sequence' | 'scalar';
+
+export interface YamlNode {
+  key: string;
+  type: YamlNodeType;
+  value: unknown;
+  children: YamlNode[];
+  meta: { depth: number; readOnly?: boolean };
+}

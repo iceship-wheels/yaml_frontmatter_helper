@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { extractFrontMatter, serializeFrontMatter, fieldsToSchema } from './parser';
-import type { FrontMatterData } from '../types';
+import { getIn, setIn, unsetIn } from './path';
+import type { FrontMatterData, YamlNodeType } from '../types';
 
 export class SyncManager {
   private disposables: vscode.Disposable[] = [];
@@ -104,6 +105,92 @@ export class SyncManager {
         newFields[key] = value;
       }
     }
+    await this.applyEditToDocument(newFields);
+  }
+
+  async applyNestedUpdate(path: string, value: unknown): Promise<void> {
+    const fm = this.currentFM ?? { fields: {}, exists: false, raw: '', startOffset: 0, endOffset: 0 };
+    let newFields: Record<string, unknown>;
+    if (!path) {
+      newFields = { ...fm.fields, ...(value as Record<string, unknown>) };
+    } else {
+      newFields = setIn(fm.fields, path, value);
+    }
+    await this.applyEditToDocument(newFields);
+  }
+
+  async applyNestedAdd(path: string, key: string, nodeType: YamlNodeType): Promise<void> {
+    const fm = this.currentFM ?? { fields: {}, exists: false, raw: '', startOffset: 0, endOffset: 0 };
+    const defaultValue = nodeType === 'mapping' ? {} : nodeType === 'sequence' ? [] : '';
+
+    let newFields: Record<string, unknown>;
+
+    if (!path) {
+      // Root-level add
+      newFields = { ...fm.fields, [key]: defaultValue };
+    } else {
+      const parent = getIn(fm.fields, path);
+
+      if (Array.isArray(parent)) {
+        // Appending to a sequence
+        const newArray = [...parent, defaultValue];
+        newFields = setIn(fm.fields, path, newArray);
+      } else if (parent !== null && typeof parent === 'object') {
+        // Adding to a mapping
+        const newParent = { ...(parent as Record<string, unknown>), [key]: defaultValue };
+        newFields = setIn(fm.fields, path, newParent);
+      } else {
+        // Parent is a scalar or missing — replace with a mapping containing the new key
+        const newParent: Record<string, unknown> = { [key]: defaultValue };
+        newFields = setIn(fm.fields, path, newParent);
+      }
+    }
+
+    await this.applyEditToDocument(newFields);
+  }
+
+  async applyNestedDelete(path: string): Promise<void> {
+    const fm = this.currentFM ?? { fields: {}, exists: false, raw: '', startOffset: 0, endOffset: 0 };
+    const newFields = unsetIn(fm.fields, path);
+    await this.applyEditToDocument(newFields);
+  }
+
+  async applyNestedRename(path: string, newKey: string): Promise<void> {
+    const fm = this.currentFM ?? { fields: {}, exists: false, raw: '', startOffset: 0, endOffset: 0 };
+
+    if (!path) return;
+
+    const lastDot = path.lastIndexOf('.');
+    const oldKey = path.slice(lastDot + 1);
+    const parentPath = lastDot >= 0 ? path.slice(0, lastDot) : '';
+
+    if (oldKey === newKey) return;
+
+    const parent: Record<string, unknown> = parentPath
+      ? (getIn(fm.fields, parentPath) as Record<string, unknown>) ?? {}
+      : fm.fields;
+
+    if (!parent || typeof parent !== 'object' || Array.isArray(parent)) return;
+    if (newKey in parent) {
+      vscode.window.showWarningMessage(`YAML Frontmatter: field "${newKey}" already exists.`);
+      return;
+    }
+
+    if (!(oldKey in parent)) return;
+
+    const newParent: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(parent)) {
+      if (k === oldKey) {
+        newParent[newKey] = v;
+      } else {
+        newParent[k] = v;
+      }
+    }
+
+    const newFields = parentPath
+      ? setIn(fm.fields, parentPath, newParent)
+      : newParent;
+
     await this.applyEditToDocument(newFields);
   }
 

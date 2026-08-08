@@ -68,6 +68,22 @@ export class FrontMatterViewProvider implements vscode.WebviewViewProvider {
         await this.syncManager.applyFieldRename(msg.oldField, msg.newField);
         break;
 
+      case 'nestedUpdate':
+        await this.syncManager.applyNestedUpdate(msg.path, msg.value);
+        break;
+
+      case 'nestedAdd':
+        await this.syncManager.applyNestedAdd(msg.path, msg.key, msg.nodeType);
+        break;
+
+      case 'nestedDelete':
+        await this.syncManager.applyNestedDelete(msg.path);
+        break;
+
+      case 'nestedRename':
+        await this.syncManager.applyNestedRename(msg.path, msg.newKey);
+        break;
+
       case 'search':
         this.handleSearch(msg.query);
         break;

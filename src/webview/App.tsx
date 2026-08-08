@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import FieldRow from './components/FieldRow';
 import AddField from './components/AddField';
 import SearchPanel from './components/SearchPanel';
+import YamlTreeView from './components/YamlTreeView';
 import { useFrontMatter } from './hooks/useFrontMatter';
 import { useVSCodeAPI } from './hooks/useVSCodeAPI';
 
@@ -51,12 +52,22 @@ const styles: Record<string, React.CSSProperties> = {
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('edit');
-  const { fields, exists, updateField, deleteField, addField, renameField, newlyAddedKey } = useFrontMatter();
+  const {
+    fields, rawFields, exists,
+    updateField, deleteField, addField, renameField,
+    nestedUpdate, nestedAdd, nestedDelete, nestedRename,
+    newlyAddedKey,
+  } = useFrontMatter();
   const { postMessage, onMessage } = useVSCodeAPI();
 
   useEffect(() => {
     postMessage({ type: 'ready' });
   }, []);
+
+  const hasNested = Object.values(rawFields).some((v) => {
+    if (Array.isArray(v)) return v.some((item) => item !== null && typeof item === 'object');
+    return v !== null && typeof v === 'object';
+  });
 
   const handleTabClick = (tab: Tab) => {
     setActiveTab(tab);
@@ -85,19 +96,29 @@ const App: React.FC = () => {
             <div style={styles.empty}>
               No front matter found in this file. Add a field below.
             </div>
+          ) : hasNested ? (
+            <YamlTreeView
+              rawFields={rawFields}
+              onUpdate={nestedUpdate}
+              onAdd={nestedAdd}
+              onDelete={nestedDelete}
+              onRename={nestedRename}
+            />
           ) : (
-            fields.map((f) => (
-              <FieldRow
-                key={f.key}
-                field={f}
-                onUpdate={updateField}
-                onDelete={deleteField}
-                onRename={renameField}
-                autoEditKey={f.key === newlyAddedKey}
-              />
-            ))
+            <>
+              {fields.map((f) => (
+                <FieldRow
+                  key={f.key}
+                  field={f}
+                  onUpdate={updateField}
+                  onDelete={deleteField}
+                  onRename={renameField}
+                  autoEditKey={f.key === newlyAddedKey}
+                />
+              ))}
+              <AddField existingKeys={fields.map((f) => f.key)} onAdd={addField} />
+            </>
           )}
-          <AddField existingKeys={fields.map((f) => f.key)} onAdd={addField} />
         </div>
       ) : (
         <SearchPanel postMessage={postMessage} onMessage={onMessage} />

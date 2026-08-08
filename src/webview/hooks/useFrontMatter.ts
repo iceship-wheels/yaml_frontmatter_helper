@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
 import { useVSCodeAPI } from './useVSCodeAPI';
-import type { FieldSchema, ValueType } from '../bridge';
+import type { FieldSchema, ValueType, YamlNode, YamlNodeType } from '../bridge';
 
 export function useFrontMatter() {
   const [fields, setFields] = useState<FieldSchema[]>([]);
+  const [rawFields, setRawFields] = useState<Record<string, unknown>>({});
   const [exists, setExists] = useState(false);
   const [newlyAddedKey, setNewlyAddedKey] = useState<string | null>(null);
   const { postMessage, onMessage } = useVSCodeAPI();
@@ -16,15 +17,14 @@ export function useFrontMatter() {
         type: inferType(value),
       }));
       setFields(schemas);
+      setRawFields(msg.fields);
       setExists(msg.exists);
-      // Clear newlyAddedKey after host sync confirms the field exists
       setNewlyAddedKey(null);
     }
   });
 
   const updateField = useCallback(
     (field: string, value: unknown) => {
-      console.log('[WEBVIEW] updateField:', field, value);
       setFields((prev) =>
         prev.map((f) =>
           f.key === field ? { ...f, value, type: inferType(value) } : f
@@ -69,14 +69,103 @@ export function useFrontMatter() {
     [postMessage]
   );
 
+  const nestedUpdate = useCallback(
+    (path: string, value: unknown) => {
+      postMessage({ type: 'nestedUpdate', path, value });
+    },
+    [postMessage]
+  );
+
+  const nestedAdd = useCallback(
+    (path: string, key: string, nodeType: YamlNodeType) => {
+      postMessage({ type: 'nestedAdd', path, key, nodeType });
+    },
+    [postMessage]
+  );
+
+  const nestedDelete = useCallback(
+    (path: string) => {
+      postMessage({ type: 'nestedDelete', path });
+    },
+    [postMessage]
+  );
+
+  const nestedRename = useCallback(
+    (path: string, newKey: string) => {
+      const trimmed = newKey.trim();
+      if (!trimmed) return;
+      postMessage({ type: 'nestedRename', path, newKey: trimmed });
+    },
+    [postMessage]
+  );
+
   const clearNewlyAddedKey = useCallback(() => {
     setNewlyAddedKey(null);
   }, []);
 
-  return { fields, exists, updateField, deleteField, addField, renameField, newlyAddedKey, clearNewlyAddedKey };
+  return {
+    fields, rawFields, exists,
+    updateField, deleteField, addField, renameField,
+    nestedUpdate, nestedAdd, nestedDelete, nestedRename,
+    newlyAddedKey, clearNewlyAddedKey,
+  };
 }
 
 function inferType(value: unknown): FieldSchema['type'] {
   if (Array.isArray(value)) return 'array';
   return 'string';
+}
+
+export type { YamlNode, YamlNodeType } from '../bridge';
+
+export function inferYamlNodeType(value: unknown): YamlNodeType {
+  if (Array.isArray(value)) return 'sequence';
+  if (value !== null && typeof value === 'object') return 'mapping';
+  return 'scalar';
+}
+
+export function fieldsToTree(
+  fields: Record<string, unknown>,
+  depth = 0
+): YamlNode[] {
+  return Object.entries(fields).map(([key, value]) => {
+    const type = inferYamlNodeType(value);
+    const isScalar = type === 'scalar';
+    let children: YamlNode[] = [];
+
+    if (Array.isArray(value)) {
+      children = value.map((v, i) => {
+        const childType = inferYamlNodeType(v);
+        const childIsScalar = childType === 'scalar';
+        return {
+          key: String(i),
+          type: childType,
+          value: v,
+          children:
+            !Array.isArray(v) && v !== null && typeof v === 'object'
+              ? fieldsToTree(v as Record<string, unknown>, depth + 1)
+              : [],
+          meta: { depth: depth + 1 },
+        };
+      });
+    } else if (!isScalar) {
+      children = fieldsToTree(value as Record<string, unknown>, depth + 1);
+    }
+
+    return {
+      key,
+      type,
+      value,
+      children,
+      meta: { depth },
+    };
+  });
+}
+
+export function maxDepth(obj: unknown): number {
+  if (!obj || typeof obj !== 'object') return 0;
+  if (Array.isArray(obj)) {
+    return 1 + Math.max(0, ...obj.map((v) => maxDepth(v)));
+  }
+  return 1 + Math.max(0, ...Object.values(obj).map((v) => maxDepth(v)));
 }

@@ -14,17 +14,6 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: '2px',
     outline: 'none',
   },
-  checkbox: {
-    margin: 0,
-    cursor: 'pointer',
-  },
-  checkboxLabel: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-    fontSize: '12px',
-    cursor: 'pointer',
-  },
   tagContainer: {
     display: 'flex',
     flexWrap: 'wrap',
@@ -68,20 +57,6 @@ interface Props {
 }
 
 const FieldEditor: React.FC<Props> = ({ field, onChange }) => {
-  if (field.type === 'boolean') {
-    return (
-      <label style={styles.checkboxLabel}>
-        <input
-          type="checkbox"
-          style={styles.checkbox}
-          checked={!!field.value}
-          onChange={(e) => onChange(e.target.checked)}
-        />
-        <span>{field.value ? 'true' : 'false'}</span>
-      </label>
-    );
-  }
-
   if (field.type === 'array') {
     return <TagEditor value={field.value as string[]} onChange={onChange} />;
   }
@@ -95,15 +70,7 @@ const FieldEditor: React.FC<Props> = ({ field, onChange }) => {
       type="text"
       style={styles.input}
       value={strValue}
-      onChange={(e) => {
-        const raw = e.target.value;
-        if (field.type === 'number') {
-          const num = Number(raw);
-          onChange(isNaN(num) ? raw : num);
-        } else {
-          onChange(raw);
-        }
-      }}
+      onChange={(e) => onChange(e.target.value)}
     />
   );
 };

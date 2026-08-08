@@ -11,7 +11,7 @@ export interface FrontMatterError {
   line?: number;
 }
 
-export type ValueType = 'string' | 'number' | 'boolean' | 'array' | 'date' | 'null';
+export type ValueType = 'string' | 'array';
 
 export interface FieldSchema {
   key: string;

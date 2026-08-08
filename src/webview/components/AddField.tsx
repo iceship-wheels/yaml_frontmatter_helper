@@ -11,11 +11,7 @@ interface TypeOption {
 
 const TYPE_OPTIONS: TypeOption[] = [
   { label: 'Text', type: 'string', defaultValue: '' },
-  { label: 'Number', type: 'number', defaultValue: '' },
-  { label: 'Boolean', type: 'boolean', defaultValue: false },
-  { label: 'Date', type: 'date', defaultValue: '' },
-  { label: 'List', type: 'array', defaultValue: [] },
-  { label: 'Empty (null)', type: 'null', defaultValue: null },
+  { label: 'Tags', type: 'array', defaultValue: [] },
 ];
 
 const styles: Record<string, React.CSSProperties> = {

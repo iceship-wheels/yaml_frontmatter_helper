@@ -20,7 +20,7 @@ export interface SearchTreeNode {
   matches?: Array<{ field: string; value: unknown }>;
 }
 
-export type ValueType = 'string' | 'number' | 'boolean' | 'array' | 'date' | 'null';
+export type ValueType = 'string' | 'array';
 
 export interface FieldSchema {
   key: string;

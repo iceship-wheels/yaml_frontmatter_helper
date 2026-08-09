@@ -9,14 +9,12 @@ const styles: Record<string, React.CSSProperties> = {
   container: {
     padding: '4px 0',
   },
-  warning: {
-    padding: '8px',
+  hiddenNotice: {
+    padding: '6px 8px',
     marginBottom: '8px',
-    backgroundColor: 'var(--vscode-inputValidation-warningBackground)',
-    border: '1px solid var(--vscode-inputValidation-warningBorder)',
-    color: 'var(--vscode-inputValidation-warningForeground)',
-    fontSize: '12px',
-    borderRadius: '3px',
+    fontSize: '11px',
+    color: 'var(--vscode-descriptionForeground)',
+    fontStyle: 'italic',
   },
 };
 
@@ -28,6 +26,16 @@ interface Props {
   onRename: (path: string, newKey: string) => void;
 }
 
+// Filter out nodes at or beyond maxDepth so they are not rendered at all
+function filterByDepth(nodes: YamlNode[], maxDepth: number): YamlNode[] {
+  return nodes
+    .filter((n) => n.meta.depth < maxDepth)
+    .map((n) => ({
+      ...n,
+      children: n.children.length > 0 ? filterByDepth(n.children, maxDepth) : n.children,
+    }));
+}
+
 const YamlTreeView: React.FC<Props> = ({
   rawFields,
   onUpdate,
@@ -35,29 +43,33 @@ const YamlTreeView: React.FC<Props> = ({
   onDelete,
   onRename,
 }) => {
-  const depth = maxDepth(rawFields);
-  const readOnly = depth > 3;
+  const totalDepth = maxDepth(rawFields);
+  const MAX_VISIBLE = 3; // show depth 0, 1, 2; hide 3+
+
   const nodes = fieldsToTree(rawFields);
+  const visibleNodes = totalDepth > MAX_VISIBLE ? filterByDepth(nodes, MAX_VISIBLE) : nodes;
+  const hasHiddenContent = totalDepth > MAX_VISIBLE;
 
   const existingKeys = nodes.map((n) => n.key);
 
   return (
     <div style={styles.container}>
-      {readOnly && (
-        <div style={styles.warning}>
-          This document has content deeper than 3 levels. Nested content beyond depth 3 is displayed read-only.
+      {hasHiddenContent && (
+        <div style={styles.hiddenNotice}>
+          Content beyond 3 levels deep is hidden from this view.
         </div>
       )}
 
-      {nodes.map((node) =>
+      {visibleNodes.map((node) =>
         node.type === 'scalar' ? (
           <ScalarField
             key={node.key}
             node={node}
             path={node.key}
-            readOnly={readOnly}
+            readOnly={false}
             onUpdate={onUpdate}
             onDelete={onDelete}
+            onRename={onRename}
           />
         ) : (
           <AccordionSection
@@ -65,7 +77,7 @@ const YamlTreeView: React.FC<Props> = ({
             node={node}
             path={node.key}
             depth={0}
-            readOnly={readOnly}
+            readOnly={false}
             onUpdate={onUpdate}
             onDelete={onDelete}
             onAdd={onAdd}
@@ -78,7 +90,7 @@ const YamlTreeView: React.FC<Props> = ({
         path=""
         existingKeys={existingKeys}
         depth={0}
-        readOnly={readOnly}
+        readOnly={false}
         onAdd={onAdd}
       />
     </div>

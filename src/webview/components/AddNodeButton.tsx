@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { YamlNodeType } from '../bridge';
 
 interface TypeOption {
@@ -27,38 +27,66 @@ function generateUniqueKey(existingKeys: string[]): string {
 
 const styles: Record<string, React.CSSProperties> = {
   container: {
-    marginTop: '8px',
-    paddingTop: '8px',
-    borderTop: '1px dashed var(--vscode-sideBarSectionHeader-border)',
+    marginTop: '6px',
   },
   addBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     width: '100%',
-    padding: '6px 0',
-    fontSize: '16px',
-    fontWeight: 600,
-    lineHeight: '18px',
+    height: '28px',
+    padding: '0 8px',
+    fontSize: '12px',
+    fontFamily: 'var(--vscode-font-family)',
+    fontWeight: 400,
+    color: 'var(--vscode-descriptionForeground)',
+    backgroundColor: 'transparent',
+    border: '1px dashed var(--vscode-sideBarSectionHeader-border)',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    boxSizing: 'border-box',
+    textAlign: 'left' as const,
+  },
+  pillRow: {
+    display: 'flex',
+    gap: '4px',
+    alignItems: 'center',
+    height: '28px',
+  },
+  pill: {
+    padding: '2px 10px',
+    fontSize: '11px',
+    fontFamily: 'var(--vscode-font-family)',
+    fontWeight: 500,
     color: 'var(--vscode-button-secondaryForeground)',
     backgroundColor: 'var(--vscode-button-secondaryBackground)',
     border: '1px solid var(--vscode-button-secondaryBackground)',
-    borderRadius: '3px',
+    borderRadius: '12px',
     cursor: 'pointer',
-    textAlign: 'center' as const,
+    lineHeight: '18px',
   },
-  select: {
-    width: '100%',
-    padding: '6px',
-    fontSize: '12px',
+  cancelPill: {
+    padding: '2px 10px',
+    fontSize: '11px',
     fontFamily: 'var(--vscode-font-family)',
-    color: 'var(--vscode-input-foreground)',
-    backgroundColor: 'var(--vscode-input-background)',
-    border: '1px solid var(--vscode-input-border)',
-    borderRadius: '2px',
-    outline: 'none',
+    fontWeight: 400,
+    color: 'var(--vscode-descriptionForeground)',
+    backgroundColor: 'transparent',
+    border: '1px solid transparent',
+    borderRadius: '12px',
+    cursor: 'pointer',
+    lineHeight: '18px',
+  },
+  chevron: {
+    fontSize: '10px',
+    color: 'var(--vscode-descriptionForeground)',
+    opacity: 0.7,
   },
 };
 
 const AddNodeButton: React.FC<Props> = ({ path, existingKeys, depth, readOnly, onAdd }) => {
   const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   if (readOnly) return null;
 
@@ -74,46 +102,79 @@ const AddNodeButton: React.FC<Props> = ({ path, existingKeys, depth, readOnly, o
           { label: 'List', nodeType: 'sequence' },
         ];
 
-  const handleSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    if (value === '__cancel__') {
-      setOpen(false);
-      return;
-    }
-    const option = options.find((o) => o.nodeType === value);
-    if (!option) {
-      setOpen(false);
-      return;
-    }
+  // Close pill row on click outside
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    // Use mousedown (before click) to catch outside clicks
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [open]);
+
+  const handleSelect = (nodeType: YamlNodeType) => {
     const key = generateUniqueKey(existingKeys);
-    onAdd(path, key, option.nodeType);
+    onAdd(path, key, nodeType);
     setOpen(false);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent, nodeType: YamlNodeType) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleSelect(nodeType);
+    }
+  };
+
   return (
-    <div style={styles.container}>
+    <div style={styles.container} ref={containerRef}>
       {!open ? (
-        <button style={styles.addBtn} onClick={() => setOpen(true)} title="Add a field">
-          +
+        <button
+          style={styles.addBtn}
+          onClick={() => setOpen(true)}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.borderStyle = 'solid';
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--vscode-toolbar-hoverBackground)';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.borderStyle = 'dashed';
+            (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
+          }}
+          title="Add a field"
+        >
+          <span>+ Add field</span>
+          <span style={styles.chevron}>▼</span>
         </button>
       ) : (
-        <select
-          style={styles.select}
-          value=""
-          onChange={handleSelect}
-          onBlur={() => setOpen(false)}
-          autoFocus
-        >
-          <option value="" disabled>
-            Select field type…
-          </option>
+        <div style={styles.pillRow}>
           {options.map((o) => (
-            <option key={o.nodeType} value={o.nodeType}>
+            <button
+              key={o.nodeType}
+              style={styles.pill}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSelect(o.nodeType);
+              }}
+              onKeyDown={(e) => handleKeyDown(e, o.nodeType)}
+              autoFocus={o === options[0]}
+            >
               {o.label}
-            </option>
+            </button>
           ))}
-          <option value="__cancel__">Cancel</option>
-        </select>
+          <button
+            style={styles.cancelPill}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setOpen(false);
+            }}
+          >
+            Cancel
+          </button>
+        </div>
       )}
     </div>
   );

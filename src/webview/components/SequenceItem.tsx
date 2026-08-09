@@ -7,30 +7,24 @@ const styles: Record<string, React.CSSProperties> = {
   row: {
     display: 'flex',
     alignItems: 'flex-start',
-    marginBottom: '4px',
     gap: '6px',
+    padding: '3px 6px',
+    minHeight: '28px',
+    borderRadius: '3px',
   },
   index: {
-    minWidth: '24px',
+    minWidth: '28px',
     padding: '2px 4px',
     fontSize: '11px',
+    fontFamily: 'var(--vscode-editor-font-family, monospace)',
     color: 'var(--vscode-descriptionForeground)',
     lineHeight: '22px',
     textAlign: 'right' as const,
+    flexShrink: 0,
   },
   content: {
     flex: 1,
-  },
-  deleteBtn: {
-    border: 'none',
-    background: 'none',
-    color: 'var(--vscode-errorForeground)',
-    cursor: 'pointer',
-    fontSize: '14px',
-    padding: '2px 4px',
-    lineHeight: '22px',
-    opacity: 0,
-    transition: 'opacity 0.1s',
+    minWidth: 0,
   },
 };
 
@@ -73,9 +67,19 @@ const SequenceItem: React.FC<Props> = ({
     onUpdate(path, updated);
   };
 
+  // Alternating row background for visual separation
+  const rowBg = index % 2 === 1
+    ? 'var(--vscode-sideBar-background, rgba(128,128,128,0.04))'
+    : 'transparent';
+
   return (
     <div
-      style={styles.row}
+      style={{
+        ...styles.row,
+        background: hover
+          ? 'var(--vscode-list-hoverBackground)'
+          : rowBg,
+      }}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
@@ -86,12 +90,13 @@ const SequenceItem: React.FC<Props> = ({
             node={node}
             path={path}
             readOnly={readOnly}
+            hideKey
             onUpdate={handleScalarUpdate}
             onDelete={handleDelete}
           />
         ) : (
           <AccordionSection
-            node={node}
+            node={{ ...node, key: '' }}
             path={path}
             depth={node.meta.depth}
             readOnly={readOnly}
@@ -102,15 +107,6 @@ const SequenceItem: React.FC<Props> = ({
           />
         )}
       </div>
-      {!readOnly && (
-        <button
-          style={{ ...styles.deleteBtn, opacity: hover ? 1 : 0 }}
-          onClick={handleDelete}
-          title={`Delete item ${index}`}
-        >
-          ×
-        </button>
-      )}
     </div>
   );
 };

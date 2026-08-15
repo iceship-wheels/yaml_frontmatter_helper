@@ -34,6 +34,18 @@
           "name": "Frontmatter"
         }
       ]
+    },
+    "configuration": {
+      "title": "YAML Frontmatter Helper",
+      "properties": {
+        "yaml-frontmatter-helper.maxDepth": {
+          "type": "number",
+          "default": 4,
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Maximum nesting depth of YAML front matter rendered and editable in the sidebar. Deeper content is collapsed behind a placeholder."
+        }
+      }
     }
   },
   "scripts": {

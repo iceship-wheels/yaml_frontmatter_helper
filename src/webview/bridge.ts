@@ -1,5 +1,5 @@
 export type MessageToWebview =
-  | { type: 'updateFM'; fields: Record<string, unknown>; exists: boolean }
+  | { type: 'updateFM'; fields: Record<string, unknown>; exists: boolean; maxDepth: number }
   | { type: 'searchResults'; query: string; tree: SearchTreeNode[] }
   | { type: 'error'; message: string };
 
@@ -39,5 +39,5 @@ export interface YamlNode {
   type: YamlNodeType;
   value: unknown;
   children: YamlNode[];
-  meta: { depth: number; readOnly?: boolean };
+  meta: { depth: number; hidden?: boolean; readOnly?: boolean };
 }

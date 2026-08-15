@@ -34,6 +34,7 @@ interface Props {
   index: number;
   sequenceValue: unknown[];
   readOnly: boolean;
+  maxDepth: number;
   onUpdate: (path: string, value: unknown) => void;
   onDelete: (path: string) => void;
   onAdd: (path: string, key: string, nodeType: YamlNode['type']) => void;
@@ -46,6 +47,7 @@ const SequenceItem: React.FC<Props> = ({
   index,
   sequenceValue,
   readOnly,
+  maxDepth,
   onUpdate,
   onDelete,
   onAdd,
@@ -99,7 +101,7 @@ const SequenceItem: React.FC<Props> = ({
             node={{ ...node, key: '' }}
             path={path}
             depth={node.meta.depth}
-            readOnly={readOnly}
+            maxDepth={maxDepth}
             onUpdate={onUpdate}
             onDelete={onDelete}
             onAdd={onAdd}

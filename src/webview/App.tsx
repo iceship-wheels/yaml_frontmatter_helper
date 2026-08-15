@@ -53,7 +53,7 @@ const styles: Record<string, React.CSSProperties> = {
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('edit');
   const {
-    fields, rawFields, exists,
+    fields, rawFields, exists, maxDepth,
     updateField, deleteField, addField, renameField,
     nestedUpdate, nestedAdd, nestedDelete, nestedRename,
     newlyAddedKey,
@@ -99,6 +99,7 @@ const App: React.FC = () => {
           ) : hasNested ? (
             <YamlTreeView
               rawFields={rawFields}
+              maxDepth={maxDepth}
               onUpdate={nestedUpdate}
               onAdd={nestedAdd}
               onDelete={nestedDelete}

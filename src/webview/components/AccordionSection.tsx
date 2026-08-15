@@ -112,13 +112,31 @@ const baseStyles: Record<string, React.CSSProperties> = {
   footer: {
     padding: '0 6px 6px 16px',
   },
+  hiddenRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '4px 6px',
+    minHeight: '26px',
+  },
+  hiddenKey: {
+    fontWeight: 600,
+    fontSize: '12px',
+    color: 'var(--vscode-symbolIcon-variableForeground)',
+    flexShrink: 0,
+  },
+  hiddenHint: {
+    fontSize: '11px',
+    fontStyle: 'italic',
+    color: 'var(--vscode-descriptionForeground)',
+  },
 };
 
 interface Props {
   node: YamlNode;
   path: string;
   depth: number;
-  readOnly: boolean;
+  maxDepth: number;
   onUpdate: (path: string, value: unknown) => void;
   onDelete: (path: string) => void;
   onAdd: (path: string, key: string, nodeType: YamlNodeType) => void;
@@ -129,7 +147,7 @@ const AccordionSection: React.FC<Props> = ({
   node,
   path,
   depth,
-  readOnly: _readOnly,
+  maxDepth,
   onUpdate,
   onDelete,
   onAdd,
@@ -144,6 +162,10 @@ const AccordionSection: React.FC<Props> = ({
   const isMapping = node.type === 'mapping';
   const isSequence = node.type === 'sequence';
   const childCount = node.children.length;
+
+  // A child added under this node would sit at `depth + 1`; disallow once it would
+  // land at or beyond maxDepth.
+  const canAddChild = depth + 1 < maxDepth;
 
   const handleKeySubmit = () => {
     const trimmed = keyValue.trim();
@@ -172,6 +194,17 @@ const AccordionSection: React.FC<Props> = ({
   };
 
   const depthStyles = depthAwareStyles(depth);
+
+  if (node.meta.hidden) {
+    return (
+      <div style={depthStyles.container}>
+        <div style={baseStyles.hiddenRow}>
+          <span style={baseStyles.hiddenKey}>{node.key}</span>
+          <span style={baseStyles.hiddenHint}>深层yaml节点信息已隐藏</span>
+        </div>
+      </div>
+    );
+  }
 
   const renderHeader = () => (
     <div
@@ -247,7 +280,7 @@ const AccordionSection: React.FC<Props> = ({
               key={child.key}
               node={child}
               path={path ? `${path}.${child.key}` : child.key}
-              readOnly={false}
+              readOnly={!!child.meta.readOnly}
               onUpdate={onUpdate}
               onDelete={onDelete}
               onRename={onRename}
@@ -258,7 +291,7 @@ const AccordionSection: React.FC<Props> = ({
               node={child}
               path={path ? `${path}.${child.key}` : child.key}
               depth={depth + 1}
-              readOnly={false}
+              maxDepth={maxDepth}
               onUpdate={onUpdate}
               onDelete={onDelete}
               onAdd={onAdd}
@@ -275,7 +308,8 @@ const AccordionSection: React.FC<Props> = ({
             path={path}
             index={i}
             sequenceValue={node.value as unknown[]}
-            readOnly={false}
+            readOnly={!!child.meta.readOnly}
+            maxDepth={maxDepth}
             onUpdate={onUpdate}
             onDelete={onDelete}
             onAdd={onAdd}
@@ -288,55 +322,59 @@ const AccordionSection: React.FC<Props> = ({
   const renderFooter = () => (
     <div style={baseStyles.footer}>
       {isMapping ? (
-        <AddNodeButton
-          path={path}
-          existingKeys={existingKeys}
-          depth={depth + 1}
-          readOnly={false}
-          onAdd={onAdd}
-        />
+        canAddChild && (
+          <AddNodeButton
+            path={path}
+            existingKeys={existingKeys}
+            depth={depth + 1}
+            maxDepth={maxDepth}
+            onAdd={onAdd}
+          />
+        )
       ) : (
-        <div
-          style={{
-            marginTop: '6px',
-            paddingTop: '6px',
-            borderTop: '1px dashed var(--vscode-sideBarSectionHeader-border)',
-          }}
-        >
-          <button
+        canAddChild && (
+          <div
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              width: '100%',
-              height: '28px',
-              padding: '0 8px',
-              fontSize: '12px',
-              fontFamily: 'var(--vscode-font-family)',
-              fontWeight: 400,
-              color: 'var(--vscode-descriptionForeground)',
-              backgroundColor: 'transparent',
-              border: '1px dashed var(--vscode-sideBarSectionHeader-border)',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              boxSizing: 'border-box',
-              textAlign: 'left' as const,
+              marginTop: '6px',
+              paddingTop: '6px',
+              borderTop: '1px dashed var(--vscode-sideBarSectionHeader-border)',
             }}
-            onClick={handleSequenceAdd}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.borderStyle = 'solid';
-              (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--vscode-toolbar-hoverBackground)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.borderStyle = 'dashed';
-              (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
-            }}
-            title="Add item"
           >
-            <span>+ Add item</span>
-            <span style={{ fontSize: '10px', color: 'var(--vscode-descriptionForeground)', opacity: 0.7 }}>+</span>
-          </button>
-        </div>
+            <button
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                width: '100%',
+                height: '28px',
+                padding: '0 8px',
+                fontSize: '12px',
+                fontFamily: 'var(--vscode-font-family)',
+                fontWeight: 400,
+                color: 'var(--vscode-descriptionForeground)',
+                backgroundColor: 'transparent',
+                border: '1px dashed var(--vscode-sideBarSectionHeader-border)',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                boxSizing: 'border-box',
+                textAlign: 'left' as const,
+              }}
+              onClick={handleSequenceAdd}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.borderStyle = 'solid';
+                (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--vscode-toolbar-hoverBackground)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.borderStyle = 'dashed';
+                (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
+              }}
+              title="Add item"
+            >
+              <span>+ Add item</span>
+              <span style={{ fontSize: '10px', color: 'var(--vscode-descriptionForeground)', opacity: 0.7 }}>+</span>
+            </button>
+          </div>
+        )
       )}
     </div>
   );

@@ -10,7 +10,7 @@ interface Props {
   path: string;
   existingKeys: string[];
   depth: number;
-  readOnly: boolean;
+  maxDepth: number;
   onAdd: (path: string, key: string, nodeType: YamlNodeType) => void;
 }
 
@@ -84,14 +84,16 @@ const styles: Record<string, React.CSSProperties> = {
   },
 };
 
-const AddNodeButton: React.FC<Props> = ({ path, existingKeys, depth, readOnly, onAdd }) => {
+const AddNodeButton: React.FC<Props> = ({ path, existingKeys, depth, maxDepth, onAdd }) => {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  if (readOnly) return null;
+  if (depth >= maxDepth) return null;
 
+  // At `depth < maxDepth - 1` a new child can still become a container.
+  // At `depth === maxDepth - 1` children may only be scalars or sequences of scalars.
   const options: TypeOption[] =
-    depth <= 1
+    depth < maxDepth - 1
       ? [
           { label: 'Text', nodeType: 'scalar' },
           { label: 'List', nodeType: 'sequence' },

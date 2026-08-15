@@ -13,6 +13,15 @@
       "script": "build:webview",
       "group": "build",
       "label": "npm: build:webview"
+    },
+    {
+      "label": "build",
+      "dependsOn": ["npm: compile", "npm: build:webview"],
+      "dependsOrder": "sequence",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
     }
   ]
 }

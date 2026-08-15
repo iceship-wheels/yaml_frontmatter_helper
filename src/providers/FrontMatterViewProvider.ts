@@ -5,10 +5,13 @@ import type { FrontMatterData, MessageFromWebview } from '../types';
 
 export class FrontMatterViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'yaml-frontmatter-helper.sidebar';
+  private static readonly DEFAULT_MAX_DEPTH = 4;
   private _view: vscode.WebviewView | null = null;
   private syncManager: SyncManager;
   private searcher: Searcher;
   private currentFM: FrontMatterData = { fields: {}, exists: false, raw: '', startOffset: 0, endOffset: 0 };
+  private maxDepth = FrontMatterViewProvider.readMaxDepth();
+  private configDisposable: vscode.Disposable;
 
   constructor(private readonly extensionUri: vscode.Uri) {
     this.syncManager = new SyncManager();
@@ -16,8 +19,27 @@ export class FrontMatterViewProvider implements vscode.WebviewViewProvider {
 
     this.syncManager.onUpdate((fm) => {
       this.currentFM = fm;
-      this.postMessage({ type: 'updateFM', fields: fm.fields, exists: fm.exists });
+      this.postMessage({ type: 'updateFM', fields: fm.fields, exists: fm.exists, maxDepth: this.maxDepth });
     });
+
+    this.configDisposable = vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration('yaml-frontmatter-helper.maxDepth')) {
+        this.maxDepth = FrontMatterViewProvider.readMaxDepth();
+        this.postMessage({
+          type: 'updateFM',
+          fields: this.currentFM.fields,
+          exists: this.currentFM.exists,
+          maxDepth: this.maxDepth,
+        });
+      }
+    });
+  }
+
+  private static readMaxDepth(): number {
+    const value = vscode.workspace
+      .getConfiguration('yaml-frontmatter-helper')
+      .get<number>('maxDepth', FrontMatterViewProvider.DEFAULT_MAX_DEPTH);
+    return typeof value === 'number' && value >= 1 ? value : FrontMatterViewProvider.DEFAULT_MAX_DEPTH;
   }
 
   resolveWebviewView(
@@ -43,6 +65,7 @@ export class FrontMatterViewProvider implements vscode.WebviewViewProvider {
   dispose(): void {
     this.syncManager.dispose();
     this.searcher.dispose();
+    this.configDisposable.dispose();
   }
 
   private async onMessage(msg: MessageFromWebview): Promise<void> {

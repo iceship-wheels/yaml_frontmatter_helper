@@ -6,6 +6,7 @@ export function useFrontMatter() {
   const [fields, setFields] = useState<FieldSchema[]>([]);
   const [rawFields, setRawFields] = useState<Record<string, unknown>>({});
   const [exists, setExists] = useState(false);
+  const [maxDepth, setMaxDepth] = useState(4);
   const [newlyAddedKey, setNewlyAddedKey] = useState<string | null>(null);
   const { postMessage, onMessage } = useVSCodeAPI();
 
@@ -19,6 +20,7 @@ export function useFrontMatter() {
       setFields(schemas);
       setRawFields(msg.fields);
       setExists(msg.exists);
+      setMaxDepth(msg.maxDepth);
       setNewlyAddedKey(null);
     }
   });
@@ -104,7 +106,7 @@ export function useFrontMatter() {
   }, []);
 
   return {
-    fields, rawFields, exists,
+    fields, rawFields, exists, maxDepth,
     updateField, deleteField, addField, renameField,
     nestedUpdate, nestedAdd, nestedDelete, nestedRename,
     newlyAddedKey, clearNewlyAddedKey,
@@ -124,48 +126,40 @@ export function inferYamlNodeType(value: unknown): YamlNodeType {
   return 'scalar';
 }
 
-export function fieldsToTree(
-  fields: Record<string, unknown>,
-  depth = 0
-): YamlNode[] {
-  return Object.entries(fields).map(([key, value]) => {
-    const type = inferYamlNodeType(value);
-    const isScalar = type === 'scalar';
-    let children: YamlNode[] = [];
+function nodeAt(key: string, value: unknown, maxDepth: number, depth: number): YamlNode {
+  const type = inferYamlNodeType(value);
+  const isScalar = type === 'scalar';
+  const isHidden = !isScalar && depth >= maxDepth;
+  const isReadOnly = isScalar && depth >= maxDepth;
 
+  let children: YamlNode[] = [];
+  if (!isHidden) {
     if (Array.isArray(value)) {
-      children = value.map((v, i) => {
-        const childType = inferYamlNodeType(v);
-        const childIsScalar = childType === 'scalar';
-        return {
-          key: String(i),
-          type: childType,
-          value: v,
-          children:
-            !Array.isArray(v) && v !== null && typeof v === 'object'
-              ? fieldsToTree(v as Record<string, unknown>, depth + 1)
-              : [],
-          meta: { depth: depth + 1 },
-        };
-      });
+      children = value.map((v, i) => nodeAt(String(i), v, maxDepth, depth + 1));
     } else if (!isScalar) {
-      children = fieldsToTree(value as Record<string, unknown>, depth + 1);
+      children = Object.entries(value as Record<string, unknown>).map(([k, v]) =>
+        nodeAt(k, v, maxDepth, depth + 1)
+      );
     }
+  }
 
-    return {
-      key,
-      type,
-      value,
-      children,
-      meta: { depth },
-    };
-  });
+  return {
+    key,
+    type,
+    value,
+    children,
+    meta: {
+      depth,
+      ...(isHidden ? { hidden: true } : {}),
+      ...(isReadOnly ? { readOnly: true } : {}),
+    },
+  };
 }
 
-export function maxDepth(obj: unknown): number {
-  if (!obj || typeof obj !== 'object') return 0;
-  if (Array.isArray(obj)) {
-    return 1 + Math.max(0, ...obj.map((v) => maxDepth(v)));
-  }
-  return 1 + Math.max(0, ...Object.values(obj).map((v) => maxDepth(v)));
+export function fieldsToTree(
+  fields: Record<string, unknown>,
+  maxDepth: number,
+  depth = 0
+): YamlNode[] {
+  return Object.entries(fields).map(([key, value]) => nodeAt(key, value, maxDepth, depth));
 }
